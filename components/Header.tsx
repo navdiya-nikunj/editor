@@ -5,6 +5,7 @@ import { signOut } from '@/lib/auth';
 import toast from 'react-hot-toast';
 import Link from 'next/link';
 import { useState } from 'react';
+import Logo from './Logo';
 
 interface HeaderProps {
   userEmail: string;
@@ -21,7 +22,7 @@ export default function Header({ userEmail }: HeaderProps) {
       toast.error('Failed to sign out');
     } else {
       toast.success('Signed out successfully');
-      router.push('/login');
+      router.push('/');
     }
   };
 
@@ -33,7 +34,7 @@ export default function Header({ userEmail }: HeaderProps) {
         <div className="flex items-center justify-between h-16">
           <div className="flex items-center gap-8">
             <Link href="/dashboard" className="flex-shrink-0">
-              <h1 className="text-xl sm:text-2xl font-bold text-primary">Share App</h1>
+              <Logo size={32} showText={true} />
             </Link>
             
             {/* Desktop Navigation */}

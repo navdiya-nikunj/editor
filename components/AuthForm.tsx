@@ -4,6 +4,8 @@ import { useState, FormEvent } from 'react';
 import { useRouter } from 'next/navigation';
 import { signIn, signUp } from '@/lib/auth';
 import toast from 'react-hot-toast';
+import Logo from './Logo';
+import Link from 'next/link';
 
 interface AuthFormProps {
   mode: 'login' | 'signup';
@@ -39,8 +41,14 @@ export default function AuthForm({ mode }: AuthFormProps) {
   };
 
   return (
-    <div className="min-h-screen flex items-center justify-center px-4 py-8">
+    <div className="min-h-screen flex items-center justify-center px-4 py-8 bg-gradient-to-br from-blue-50 to-indigo-100 dark:from-gray-900 dark:to-gray-800">
       <div className="max-w-md w-full bg-white dark:bg-gray-800 rounded-lg shadow-xl p-6 sm:p-8">
+        <div className="flex justify-center mb-6">
+          <Link href="/">
+            <Logo size={48} showText={true} />
+          </Link>
+        </div>
+        
         <h2 className="text-2xl sm:text-3xl font-bold text-center mb-6 sm:mb-8">
           {mode === 'login' ? 'Welcome Back' : 'Create Account'}
         </h2>

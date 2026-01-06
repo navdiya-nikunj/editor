@@ -3,15 +3,13 @@
 import { useEffect, useState } from 'react';
 import { useRouter } from 'next/navigation';
 import { getCurrentUser } from '@/lib/auth';
-import { getOrCreateDocument } from '@/lib/sections';
 import Header from '@/components/Header';
-import LiveEditor from '@/components/LiveEditor';
+import FileSection from '@/components/FileSection';
 import toast from 'react-hot-toast';
 
-export default function DashboardPage() {
+export default function FilesPage() {
   const router = useRouter();
   const [user, setUser] = useState<any>(null);
-  const [content, setContent] = useState('');
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
@@ -24,15 +22,6 @@ export default function DashboardPage() {
       }
 
       setUser(currentUser);
-      
-      const { data, error } = await getOrCreateDocument(currentUser.id);
-      
-      if (error) {
-        toast.error('Failed to load document');
-      } else {
-        setContent(data?.content || '');
-      }
-      
       setLoading(false);
     };
 
@@ -51,17 +40,15 @@ export default function DashboardPage() {
     <div className="min-h-screen bg-gray-50 dark:bg-gray-900 flex flex-col">
       <Header userEmail={user?.email || ''} />
       
-      <main className="flex-1 max-w-7xl w-full mx-auto px-4 sm:px-6 lg:px-8 py-4 sm:py-8 flex flex-col">
-        <div className="mb-4 sm:mb-6">
-          <h2 className="text-2xl sm:text-3xl font-bold mb-1 sm:mb-2">Live Editor</h2>
-          <p className="text-sm sm:text-base text-gray-600 dark:text-gray-400">
-            Paste content here and access it instantly on any device 🚀
+      <main className="flex-1 max-w-7xl w-full mx-auto px-4 sm:px-6 lg:px-8 py-8">
+        <div className="mb-6">
+          <h2 className="text-3xl font-bold mb-2">Files</h2>
+          <p className="text-gray-600 dark:text-gray-400">
+            Upload and access files across your devices
           </p>
         </div>
 
-        <div className="flex-1 min-h-0">
-          <LiveEditor userId={user?.id} initialContent={content} />
-        </div>
+        <FileSection userId={user?.id} />
       </main>
     </div>
   );

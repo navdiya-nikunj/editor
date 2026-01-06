@@ -1,20 +1,89 @@
-import { supabase, Section } from './supabase';
+import { supabase, Document, FileRecord } from './supabase';
 
-export const createSection = async (
-  userId: string,
-  type: 'text' | 'link' | 'file',
-  title: string,
-  content: string,
-  fileUrl?: string
-) => {
+export const getOrCreateDocument = async (userId: string) => {
+  // First, try to get existing document
   const { data, error } = await supabase
-    .from('sections')
+    .from('documents')
+    .select('*')
+    .eq('user_id', userId)
+    .single();
+  
+  if (data) {
+    return { data, error: null };
+  }
+  
+  // If doesn't exist, create new document
+  const { data: newDoc, error: createError } = await supabase
+    .from('documents')
     .insert({
       user_id: userId,
-      type,
-      title,
-      content,
-      file_url: fileUrl,
+      content: '',
+    })
+    .select()
+    .single();
+  
+  return { data: newDoc, error: createError };
+};
+
+export const updateDocument = async (userId: string, content: string) => {
+  const { data, error } = await supabase
+    .from('documents')
+    .update({ content })
+    .eq('user_id', userId)
+    .select()
+    .single();
+  
+  return { data, error };
+};
+
+export const subscribeToDocument = (
+  userId: string,
+  callback: (payload: any) => void
+) => {
+  const channel = supabase
+    .channel('document-changes')
+    .on(
+      'postgres_changes',
+      {
+        event: 'UPDATE',
+        schema: 'public',
+        table: 'documents',
+        filter: `user_id=eq.${userId}`,
+      },
+      callback
+    )
+    .subscribe();
+  
+  return channel;
+};
+
+// File operations
+export const uploadFile = async (userId: string, file: File) => {
+  const fileExt = file.name.split('.').pop();
+  const fileName = `${userId}/${Date.now()}-${file.name}`;
+  
+  // Upload to storage
+  const { error: uploadError } = await supabase.storage
+    .from('files')
+    .upload(fileName, file);
+  
+  if (uploadError) return { data: null, error: uploadError };
+  
+  // Get public URL
+  const { data: { publicUrl } } = supabase.storage
+    .from('files')
+    .getPublicUrl(fileName);
+  
+  console.log('publicUrl', publicUrl);
+  
+  // Save metadata to database
+  const { data, error } = await supabase
+    .from('files')
+    .insert({
+      user_id: userId,
+      name: file.name,
+      size: file.size,
+      file_url: publicUrl,
     })
     .select()
     .single();
@@ -22,9 +91,9 @@ export const createSection = async (
   return { data, error };
 };
 
-export const getSections = async (userId: string) => {
+export const getFiles = async (userId: string) => {
   const { data, error } = await supabase
-    .from('sections')
+    .from('files')
     .select('*')
     .eq('user_id', userId)
     .order('created_at', { ascending: false });
@@ -32,44 +101,45 @@ export const getSections = async (userId: string) => {
   return { data, error };
 };
 
-export const deleteSection = async (sectionId: string) => {
+export const deleteFile = async (fileId: string, fileUrl: string, userId: string) => {
+  // Extract file path from URL
+  const urlParts = fileUrl.split('/files/');
+  const filePath = urlParts[urlParts.length - 1];
+  
+  // Delete from storage
+  const { error: storageError } = await supabase.storage
+    .from('files')
+    .remove([filePath]);
+  
+  if (storageError) return { error: storageError };
+  
+  // Delete metadata from database
   const { error } = await supabase
-    .from('sections')
+    .from('files')
     .delete()
-    .eq('id', sectionId);
+    .eq('id', fileId);
   
   return { error };
 };
 
-export const updateSection = async (
-  sectionId: string,
-  title: string,
-  content: string
+export const subscribeToFiles = (
+  userId: string,
+  callback: (payload: any) => void
 ) => {
-  const { data, error } = await supabase
-    .from('sections')
-    .update({ title, content, updated_at: new Date().toISOString() })
-    .eq('id', sectionId)
-    .select()
-    .single();
+  const channel = supabase
+    .channel('files-changes')
+    .on(
+      'postgres_changes',
+      {
+        event: '*',
+        schema: 'public',
+        table: 'files',
+        filter: `user_id=eq.${userId}`,
+      },
+      callback
+    )
+    .subscribe();
   
-  return { data, error };
-};
-
-export const uploadFile = async (userId: string, file: File) => {
-  const fileExt = file.name.split('.').pop();
-  const fileName = `${userId}/${Date.now()}.${fileExt}`;
-  
-  const { data, error } = await supabase.storage
-    .from('files')
-    .upload(fileName, file);
-  
-  if (error) return { data: null, error };
-  
-  const { data: { publicUrl } } = supabase.storage
-    .from('files')
-    .getPublicUrl(fileName);
-  
-  return { data: publicUrl, error: null };
+  return channel;
 };
 

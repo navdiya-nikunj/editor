@@ -39,13 +39,13 @@ export default function AuthForm({ mode }: AuthFormProps) {
   };
 
   return (
-    <div className="min-h-screen flex items-center justify-center px-4">
-      <div className="max-w-md w-full bg-white dark:bg-gray-800 rounded-lg shadow-xl p-8">
-        <h2 className="text-3xl font-bold text-center mb-8">
+    <div className="min-h-screen flex items-center justify-center px-4 py-8">
+      <div className="max-w-md w-full bg-white dark:bg-gray-800 rounded-lg shadow-xl p-6 sm:p-8">
+        <h2 className="text-2xl sm:text-3xl font-bold text-center mb-6 sm:mb-8">
           {mode === 'login' ? 'Welcome Back' : 'Create Account'}
         </h2>
         
-        <form onSubmit={handleSubmit} className="space-y-6">
+        <form onSubmit={handleSubmit} className="space-y-4 sm:space-y-6">
           <div>
             <label htmlFor="email" className="block text-sm font-medium mb-2">
               Email
@@ -56,7 +56,7 @@ export default function AuthForm({ mode }: AuthFormProps) {
               value={email}
               onChange={(e) => setEmail(e.target.value)}
               required
-              className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary focus:border-transparent outline-none"
+              className="w-full px-4 py-2.5 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary focus:border-transparent outline-none text-base"
               placeholder="you@example.com"
             />
           </div>
@@ -72,7 +72,7 @@ export default function AuthForm({ mode }: AuthFormProps) {
               onChange={(e) => setPassword(e.target.value)}
               required
               minLength={6}
-              className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary focus:border-transparent outline-none"
+              className="w-full px-4 py-2.5 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary focus:border-transparent outline-none text-base"
               placeholder="••••••••"
             />
           </div>
@@ -80,7 +80,7 @@ export default function AuthForm({ mode }: AuthFormProps) {
           <button
             type="submit"
             disabled={loading}
-            className="w-full bg-primary hover:bg-blue-600 text-white font-semibold py-3 rounded-lg transition disabled:opacity-50 disabled:cursor-not-allowed"
+            className="w-full bg-primary hover:bg-blue-600 text-white font-semibold py-3 rounded-lg transition disabled:opacity-50 disabled:cursor-not-allowed text-base"
           >
             {loading ? 'Processing...' : mode === 'login' ? 'Sign In' : 'Sign Up'}
           </button>

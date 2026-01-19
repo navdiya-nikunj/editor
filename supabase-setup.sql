@@ -92,4 +92,3 @@ CREATE POLICY "Users can delete their own files"
     bucket_id = 'files' AND
     auth.uid()::text = (storage.foldername(name))[1]
   );
-

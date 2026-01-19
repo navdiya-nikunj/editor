@@ -12,7 +12,9 @@ interface FileSectionProps {
 export default function FileSection({ userId }: FileSectionProps) {
   const [files, setFiles] = useState<FileRecord[]>([]);
   const [uploading, setUploading] = useState(false);
+  const [isDragging, setIsDragging] = useState(false);
   const fileInputRef = useRef<HTMLInputElement>(null);
+  const dragCounterRef = useRef(0);
 
   useEffect(() => {
     // Load initial files
@@ -39,10 +41,7 @@ export default function FileSection({ userId }: FileSectionProps) {
     // };
   }, [userId]);
 
-  const handleFileUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
-    const file = e.target.files?.[0];
-    if (!file) return;
-
+  const processFileUpload = async (file: File) => {
     // Check file size (max 50MB)
     if (file.size > 50 * 1024 * 1024) {
       toast.error('File size must be less than 50MB');
@@ -60,8 +59,52 @@ export default function FileSection({ userId }: FileSectionProps) {
     }
 
     setUploading(false);
+  };
+
+  const handleFileUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+
+    await processFileUpload(file);
+    
     if (fileInputRef.current) {
       fileInputRef.current.value = '';
+    }
+  };
+
+  const handleDragEnter = (e: React.DragEvent) => {
+    e.preventDefault();
+    e.stopPropagation();
+    dragCounterRef.current++;
+    if (e.dataTransfer.items && e.dataTransfer.items.length > 0) {
+      setIsDragging(true);
+    }
+  };
+
+  const handleDragLeave = (e: React.DragEvent) => {
+    e.preventDefault();
+    e.stopPropagation();
+    dragCounterRef.current--;
+    if (dragCounterRef.current === 0) {
+      setIsDragging(false);
+    }
+  };
+
+  const handleDragOver = (e: React.DragEvent) => {
+    e.preventDefault();
+    e.stopPropagation();
+  };
+
+  const handleDrop = async (e: React.DragEvent) => {
+    e.preventDefault();
+    e.stopPropagation();
+    setIsDragging(false);
+    dragCounterRef.current = 0;
+
+    const droppedFiles = e.dataTransfer.files;
+    if (droppedFiles && droppedFiles.length > 0) {
+      const file = droppedFiles[0];
+      await processFileUpload(file);
     }
   };
 
@@ -81,6 +124,39 @@ export default function FileSection({ userId }: FileSectionProps) {
   const handleCopyUrl = (url: string) => {
     navigator.clipboard.writeText(url);
     toast.success('Link copied!');
+  };
+
+  const handleShare = async (file: FileRecord) => {
+    // Check if Web Share API is available (mobile browsers)
+    if (navigator.share) {
+      try {
+        await navigator.share({
+          title: file.name,
+          text: `Check out this file: ${file.name}`,
+          url: file.file_url,
+        });
+        toast.success('Shared successfully!');
+      } catch (error: any) {
+        if (error.name !== 'AbortError') {
+          toast.error('Failed to share');
+        }
+      }
+    } else {
+      // Fallback for desktop - copy link
+      handleCopyUrl(file.file_url);
+    }
+  };
+
+  const handleShareWhatsApp = (file: FileRecord) => {
+    const text = encodeURIComponent(`Check out this file: ${file.name}\n${file.file_url}`);
+    const url = `https://wa.me/?text=${text}`;
+    window.open(url, '_blank');
+  };
+
+  const handleShareTelegram = (file: FileRecord) => {
+    const text = encodeURIComponent(`Check out this file: ${file.name}`);
+    const url = `https://t.me/share/url?url=${encodeURIComponent(file.file_url)}&text=${text}`;
+    window.open(url, '_blank');
   };
 
   const formatFileSize = (bytes: number) => {
@@ -134,51 +210,104 @@ export default function FileSection({ userId }: FileSectionProps) {
         </label>
       </div>
 
+      {/* Drag and Drop Zone */}
+      <div
+        onDragEnter={handleDragEnter}
+        onDragOver={handleDragOver}
+        onDragLeave={handleDragLeave}
+        onDrop={handleDrop}
+        className={`mb-4 border-2 border-dashed rounded-lg p-6 sm:p-8 text-center transition-all ${
+          isDragging
+            ? 'border-primary bg-blue-50 dark:bg-blue-900/20 scale-[1.02]'
+            : 'border-gray-300 dark:border-gray-600 hover:border-primary hover:bg-gray-50 dark:hover:bg-gray-700/50'
+        }`}
+      >
+        <div className="flex flex-col items-center gap-2">
+          <div className={`text-4xl sm:text-5xl transition-transform ${isDragging ? 'scale-110' : ''}`}>
+            📤
+          </div>
+          <p className="text-sm sm:text-base font-medium text-gray-700 dark:text-gray-300">
+            {isDragging ? 'Drop file here!' : 'Drag & drop file here'}
+          </p>
+          <p className="text-xs text-gray-500 dark:text-gray-400">
+            or click the upload button above
+          </p>
+          <p className="text-xs text-gray-400 dark:text-gray-500">
+            Max file size: 50MB
+          </p>
+        </div>
+      </div>
+
       {files.length === 0 ? (
-        <div className="text-center py-8 sm:py-12 text-gray-500 dark:text-gray-400">
+        <div className="text-center py-4 sm:py-8 text-gray-500 dark:text-gray-400">
           <div className="text-3xl sm:text-4xl mb-2">📁</div>
           <p className="text-sm">No files uploaded yet</p>
         </div>
       ) : (
-        <div className="space-y-2 max-h-[calc(100vh-300px)] overflow-y-auto">
+        <div className="space-y-3 max-h-[calc(100vh-400px)] overflow-y-auto">
           {files.map((file) => (
             <div
               key={file.id}
-              className="flex items-center gap-2 sm:gap-3 p-2 sm:p-3 bg-gray-50 dark:bg-gray-700 rounded-lg hover:bg-gray-100 dark:hover:bg-gray-600 transition"
+              className="bg-gray-50 dark:bg-gray-700 rounded-lg hover:bg-gray-100 dark:hover:bg-gray-600 transition p-3 sm:p-4"
             >
-              <span className="text-xl sm:text-2xl flex-shrink-0">{getFileIcon(file.name)}</span>
-              
-              <div className="flex-1 min-w-0">
-                <p className="font-medium truncate text-sm sm:text-base" title={file.name}>
-                  {file.name}
-                </p>
-                <p className="text-xs text-gray-500 dark:text-gray-400">
-                  {formatFileSize(file.size)} · {new Date(file.created_at).toLocaleDateString()}
-                </p>
+              <div className="flex items-center gap-2 sm:gap-3 mb-2">
+                <span className="text-xl sm:text-2xl flex-shrink-0">{getFileIcon(file.name)}</span>
+                
+                <div className="flex-1 min-w-0">
+                  <p className="font-medium truncate text-sm sm:text-base" title={file.name}>
+                    {file.name}
+                  </p>
+                  <p className="text-xs text-gray-500 dark:text-gray-400">
+                    {formatFileSize(file.size)} · {new Date(file.created_at).toLocaleDateString()}
+                  </p>
+                </div>
+
+                <button
+                  onClick={() => handleDelete(file)}
+                  className="text-xs bg-red-500 text-white px-2 sm:px-3 py-1.5 rounded hover:bg-red-600 transition flex-shrink-0"
+                  title="Delete"
+                >
+                  🗑️
+                </button>
               </div>
 
-              <div className="flex gap-1 flex-shrink-0">
+              {/* Action Buttons */}
+              <div className="flex flex-wrap gap-2">
                 <button
                   onClick={() => handleCopyUrl(file.file_url)}
-                  className="text-xs bg-gray-200 dark:bg-gray-600 px-2 sm:px-3 py-1.5 rounded hover:bg-gray-300 dark:hover:bg-gray-500 transition whitespace-nowrap"
-                  title="Copy link"
+                  className="flex-1 min-w-[80px] text-xs bg-gray-200 dark:bg-gray-600 px-3 py-2 rounded hover:bg-gray-300 dark:hover:bg-gray-500 transition font-medium"
                 >
-                  Copy
+                  📋 Copy Link
                 </button>
                 <a
                   href={file.file_url}
                   target="_blank"
                   rel="noopener noreferrer"
-                  className="text-xs bg-primary text-white px-2 sm:px-3 py-1.5 rounded hover:bg-blue-600 transition whitespace-nowrap"
+                  className="flex-1 min-w-[80px] text-xs bg-primary text-white px-3 py-2 rounded hover:bg-blue-600 transition text-center font-medium"
                 >
-                  Open
+                  👁️ Open
                 </a>
+                {navigator.share && (
+                  <button
+                    onClick={() => handleShare(file)}
+                    className="flex-1 min-w-[80px] text-xs bg-green-500 text-white px-3 py-2 rounded hover:bg-green-600 transition font-medium"
+                  >
+                    📱 Share
+                  </button>
+                )}
                 <button
-                  onClick={() => handleDelete(file)}
-                  className="text-xs bg-red-500 text-white px-2 sm:px-3 py-1.5 rounded hover:bg-red-600 transition"
-                  title="Delete"
+                  onClick={() => handleShareWhatsApp(file)}
+                  className="text-xs bg-[#25D366] text-white px-3 py-2 rounded hover:bg-[#20BA5A] transition font-medium"
+                  title="Share on WhatsApp"
                 >
-                  🗑️
+                  WhatsApp
+                </button>
+                <button
+                  onClick={() => handleShareTelegram(file)}
+                  className="text-xs bg-[#0088cc] text-white px-3 py-2 rounded hover:bg-[#006699] transition font-medium"
+                  title="Share on Telegram"
+                >
+                  Telegram
                 </button>
               </div>
             </div>

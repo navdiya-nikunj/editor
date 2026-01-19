@@ -287,7 +287,7 @@ export default function FileSection({ userId }: FileSectionProps) {
                 >
                   👁️ Open
                 </a>
-                {navigator.share && (
+                {navigator.share !== undefined && (
                   <button
                     onClick={() => handleShare(file)}
                     className="flex-1 min-w-[80px] text-xs bg-green-500 text-white px-3 py-2 rounded hover:bg-green-600 transition font-medium"
